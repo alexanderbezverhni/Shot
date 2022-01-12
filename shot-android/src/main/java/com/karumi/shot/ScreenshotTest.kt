@@ -16,6 +16,7 @@ import android.widget.HorizontalScrollView
 import android.widget.ScrollView
 import androidx.annotation.RequiresApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.SemanticsNodeInteractionCollection
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onRoot
 import androidx.fragment.app.Fragment
@@ -27,6 +28,7 @@ import com.facebook.testing.screenshot.ViewHelpers
 import com.facebook.testing.screenshot.internal.TestNameDetector
 import com.karumi.shot.compose.ComposeScreenshotRunner
 import com.karumi.shot.compose.ScreenshotMetadata
+import com.karumi.shot.compose.ScreenshotSource
 import java.lang.IllegalStateException
 
 interface ScreenshotTest {
@@ -116,7 +118,7 @@ interface ScreenshotTest {
         compareScreenshot(rule.onRoot(), name)
     }
 
-    fun compareScreenshot(bitmap: Bitmap, name: String? = null) {
+    fun compareScreenshot(bitmap: android.graphics.Bitmap, name: String? = null) {
         disableFlakyComponentsAndWaitForIdle()
         val rawTestName = TestNameDetector.getTestName()
         val testName = name ?: rawTestName
@@ -142,6 +144,38 @@ interface ScreenshotTest {
         val composeScreenshot = ComposeScreenshotRunner.composeScreenshot
         if (composeScreenshot != null) {
             composeScreenshot.saveScreenshot(node, data)
+        } else {
+            throw IllegalStateException("Shot couldn't take the screenshot. Ensure your project uses ShotTestRunner as your instrumentation test runner.")
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun compareScreenshot(nodes: SemanticsNodeInteractionCollection, name: String? = null) {
+        disableFlakyComponentsAndWaitForIdle()
+        val rawTestName = TestNameDetector.getTestName()
+        val testName = name ?: rawTestName
+        val testClassName = TestNameDetector.getTestClass()
+        val screenshotName = "${testClassName}_$testName"
+        val data = ScreenshotMetadata(name = screenshotName, testClassName = testClassName, testName = testName)
+        val composeScreenshot = ComposeScreenshotRunner.composeScreenshot
+        if (composeScreenshot != null) {
+            composeScreenshot.saveScreenshot(nodes, data)
+        } else {
+            throw IllegalStateException("Shot couldn't take the screenshot. Ensure your project uses ShotTestRunner as your instrumentation test runner.")
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun compareScreenshot(nodes: List<SemanticsNodeInteraction>, name: String? = null) {
+        disableFlakyComponentsAndWaitForIdle()
+        val rawTestName = TestNameDetector.getTestName()
+        val testName = name ?: rawTestName
+        val testClassName = TestNameDetector.getTestClass()
+        val screenshotName = "${testClassName}_$testName"
+        val data = ScreenshotMetadata(name = screenshotName, testClassName = testClassName, testName = testName)
+        val composeScreenshot = ComposeScreenshotRunner.composeScreenshot
+        if (composeScreenshot != null) {
+            composeScreenshot.saveScreenshot(nodes, data)
         } else {
             throw IllegalStateException("Shot couldn't take the screenshot. Ensure your project uses ShotTestRunner as your instrumentation test runner.")
         }

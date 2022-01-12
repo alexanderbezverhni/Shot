@@ -11,7 +11,11 @@ class ComposeScreenshotRunner {
         fun onCreate(instrumentation: Instrumentation) {
             composeScreenshot = ComposeScreenshot(
                 session = ScreenshotTestSession(),
-                saver = ScreenshotSaver(instrumentation.context.packageName, SemanticsNodeBitmapGenerator()),
+                saver = ScreenshotSaver(
+                        packageName = instrumentation.context.packageName,
+                        singleNodeBitmapGenerator = SemanticsNodeBitmapGenerator(),
+                        multipleNodesBitmapGenerator = SemanticsNodeCollectionBitmapGenerator()
+                ),
                 permissions = AndroidStoragePermissions(instrumentation)
             )
         }

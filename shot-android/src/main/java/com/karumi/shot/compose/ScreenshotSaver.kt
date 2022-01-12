@@ -3,13 +3,18 @@ package com.karumi.shot.compose
 import android.graphics.Bitmap
 import android.os.Build
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.SemanticsNodeInteractionCollection
 import com.google.gson.Gson
 import com.karumi.shot.AndroidStorageInfo
 import java.io.File
 import java.io.FileOutputStream
 import java.lang.IllegalArgumentException
 
-class ScreenshotSaver(private val packageName: String, private val bitmapGenerator: SemanticsNodeBitmapGenerator) {
+class ScreenshotSaver(
+        private val packageName: String,
+        private val singleNodeBitmapGenerator: SemanticsNodeBitmapGenerator,
+        private val multipleNodesBitmapGenerator: SemanticsNodeCollectionBitmapGenerator
+        ) {
 
     private val screenshotsFolder: String = "${AndroidStorageInfo.storageBaseUrl}/screenshots/$packageName/screenshots-compose-default/"
     private val metadataFile: String = "$screenshotsFolder/metadata.json"
@@ -21,11 +26,23 @@ class ScreenshotSaver(private val packageName: String, private val bitmapGenerat
         saveScreenshotBitmap(bitmap, screenshot.data)
     }
 
-    private fun getBitmapFromScreenshotToSave(screenshot: ScreenshotToSave) = when (screenshot.source) {
+    private fun getBitmapFromScreenshotToSave(screenshot: ScreenshotToSave): android.graphics.Bitmap = when (screenshot.source) {
         is ScreenshotSource.Bitmap -> screenshot.source.bitmap
+        is ScreenshotSource.Nodes ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                multipleNodesBitmapGenerator.generateBitmap(screenshot.source)
+            } else {
+                throw IllegalArgumentException("Can't extract bitmap from nodes in a SDK version lower than Build.VERSION_CODES.O")
+            }
+        is ScreenshotSource.NodesCollection ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                multipleNodesBitmapGenerator.generateBitmap(screenshot.source)
+            } else {
+                throw IllegalArgumentException("Can't extract bitmap from nodes in a SDK version lower than Build.VERSION_CODES.O")
+            }
         is ScreenshotSource.Node ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                bitmapGenerator.generateBitmap(screenshot.source)
+                singleNodeBitmapGenerator.generateBitmap(screenshot.source)
             } else {
                 throw IllegalArgumentException("Can't extract bitmap from node in a SDK version lower than Build.VERSION_CODES.O")
             }
@@ -53,13 +70,13 @@ class ScreenshotSaver(private val packageName: String, private val bitmapGenerat
         printWriter.close()
     }
 
-    private fun saveScreenshotBitmap(bitmap: Bitmap, data: ScreenshotMetadata) {
+    private fun saveScreenshotBitmap(bitmap: android.graphics.Bitmap, data: ScreenshotMetadata) {
         val screenshotPath = getScreenshotSdCardPath(data)
         deleteFileIfExists(screenshotPath)
         createFileIfNotExists(screenshotPath)
         val fileOutputStream = FileOutputStream(screenshotPath)
         fileOutputStream.use { out ->
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
         }
         fileOutputStream.close()
     }
@@ -86,5 +103,7 @@ data class ScreenshotToSave(val source: ScreenshotSource, val data: ScreenshotMe
 
 sealed class ScreenshotSource {
     data class Node(val node: SemanticsNodeInteraction) : ScreenshotSource()
+    data class NodesCollection(val nodes: SemanticsNodeInteractionCollection) : ScreenshotSource()
+    data class Nodes(val nodes: List<SemanticsNodeInteraction>) : ScreenshotSource()
     data class Bitmap(val bitmap: android.graphics.Bitmap) : ScreenshotSource()
 }
